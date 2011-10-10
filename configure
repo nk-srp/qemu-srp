@@ -235,6 +235,9 @@ case "$cpu" in
   sparc|sun4[cdmuv])
     cpu="sparc"
   ;;
+  srp)
+    cpu="srp"
+  ;;
   *)
     echo "Unsupported CPU = $cpu"
     exit 1
@@ -2673,6 +2676,9 @@ case "$target_arch2" in
   ;;
   s390x)
     target_phys_bits=64
+  ;;
+  srp)
+    target_phys_bits=32
   ;;
   *)
     echo "Unsupported target CPU"
