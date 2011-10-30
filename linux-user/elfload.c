@@ -625,6 +625,38 @@ static void elf_core_copy_regs(target_elf_gregset_t *regs, const CPUState *env)
 
 #endif /* TARGET_MIPS */
 
+#ifdef TARGET_SRP
+
+#define ELF_START_MMAP 0x80000000
+
+#define elf_check_arch(x) ( (x) == EM_SRP )
+#define ELF_CLASS  ELFCLASS32
+#define ELF_DATA  ELFDATA2LSB
+#define ELF_ARCH  EM_SRP
+
+static inline void init_thread(struct target_pt_regs *regs, struct image_info *infop)
+{
+	regs->psw = 0;
+	regs->sp = infop->start_stack;
+	regs->pc = infop->entry;
+}
+
+#define ELF_EXEC_PAGESIZE        4096
+
+#define ELF_NREG  60
+typedef target_elf_greg_t target_elf_gregset_t[ELF_NREG];
+
+static void elf_core_copy_regs(target_elf_gregset_t *regs, const CPUState *env)
+{
+  int i;
+  for (i = 0; i < ELF_NREG; i++) {
+    (*regs)[i] = tswapl(env->regs[i]);
+  }
+
+}
+
+#endif /* TARGET_SRP */
+
 #ifdef TARGET_MICROBLAZE
 
 #define ELF_START_MMAP 0x80000000

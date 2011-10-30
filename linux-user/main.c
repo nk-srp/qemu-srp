@@ -814,7 +814,37 @@ void cpu_loop(CPUARMState *env)
     }
 }
 
-#endif
+#endif  /* TAEGET_ARM */
+
+#ifdef TARGET_SRP
+void cpu_loop(CPUState *env)
+{
+	int trapnr;
+    //unsigned int n, insn;
+    //target_siginfo_t info;
+    //uint32_t addr;
+
+    for(;;) {
+        cpu_exec_start(env);
+
+        trapnr = cpu_srp_exec(env);
+perror("hjc");
+        cpu_exec_end(env);
+
+        switch(trapnr) {
+		case EXCP_NOP:
+		case EXCP_SWI:
+		default:
+		//error:
+			fprintf(stderr, "qemu: unhandled CPU exception 0x%x - aborting\n",
+                    trapnr);
+            cpu_dump_state(env, stderr, fprintf, 0);
+            abort();
+		}
+		process_pending_signals(env);
+	}
+}
+#endif /* TARGET_SRP */
 
 #ifdef TARGET_SPARC
 #define SPARC64_STACK_BIAS 2047
@@ -1064,7 +1094,7 @@ void cpu_loop (CPUSPARCState *env)
     }
 }
 
-#endif
+#endif  /* TARGET_SPARC */
 
 #ifdef TARGET_PPC
 static inline uint64_t cpu_ppc_get_tb (CPUState *env)
@@ -1599,7 +1629,7 @@ void cpu_loop(CPUPPCState *env)
         process_pending_signals(env);
     }
 }
-#endif
+#endif  /* TARGET_PPC */
 
 #ifdef TARGET_MIPS
 
@@ -2080,7 +2110,7 @@ void cpu_loop(CPUMIPSState *env)
         process_pending_signals(env);
     }
 }
-#endif
+#endif  /* TARGET_MIPS */
 
 #ifdef TARGET_SH4
 void cpu_loop (CPUState *env)
@@ -2138,7 +2168,7 @@ void cpu_loop (CPUState *env)
         process_pending_signals (env);
     }
 }
-#endif
+#endif  /* TARGET_SH4 */
 
 #ifdef TARGET_CRIS
 void cpu_loop (CPUState *env)
@@ -2195,7 +2225,7 @@ void cpu_loop (CPUState *env)
         process_pending_signals (env);
     }
 }
-#endif
+#endif  /* TARGET_CRIS */
 
 #ifdef TARGET_MICROBLAZE
 void cpu_loop (CPUState *env)
@@ -2255,10 +2285,9 @@ void cpu_loop (CPUState *env)
         process_pending_signals (env);
     }
 }
-#endif
+#endif  /* TARGET_MICROBLAZE */
 
 #ifdef TARGET_M68K
-
 void cpu_loop(CPUM68KState *env)
 {
     int trapnr;
@@ -2899,6 +2928,8 @@ int main(int argc, char **argv, char **envp)
 #else
         cpu_model = "750";
 #endif
+#elif defined(TARGET_SRP)
+	cpu_model = "srp";
 #else
         cpu_model = "any";
 #endif
@@ -3015,7 +3046,7 @@ int main(int argc, char **argv, char **envp)
         printf("Error %d while loading %s\n", ret, filename);
         _exit(1);
     }
-
+		
     for (i = 0; i < target_argc; i++) {
         free(target_argv[i]);
     }
@@ -3285,6 +3316,8 @@ int main(int argc, char **argv, char **envp)
         for(i = 0; i < 16; i++) {
             env->gregs[i] = regs->regs[i];
         }
+		env->psw = regs->psw;
+		env->sp = regs->sp;
         env->pc = regs->pc;
     }
 #elif defined(TARGET_ALPHA)
@@ -3317,6 +3350,15 @@ int main(int argc, char **argv, char **envp)
 	    env->regs[15] = regs->acr;	    
 	    env->pc = regs->erp;
     }
+#elif defined(TARGET_SRP)
+	{
+		int i;
+        for(i = 0; i < 60; i++) {
+            env->regs[i] = regs->uregs[i];
+        }
+		env->pc = regs->pc;
+	}
+
 #else
 #error unsupported target CPU
 #endif

@@ -256,6 +256,7 @@ int cpu_exec(CPUState *env1)
     env->cc_x = (env->sr >> 4) & 1;
 #elif defined(TARGET_ALPHA)
 #elif defined(TARGET_ARM)
+#elif defined(TARGET_SRP)
 #elif defined(TARGET_PPC)
 #elif defined(TARGET_MICROBLAZE)
 #elif defined(TARGET_MIPS)
@@ -276,7 +277,7 @@ int cpu_exec(CPUState *env1)
                     env = cpu_single_env;
 #define env cpu_single_env
 #endif
-            /* if an exception is pending, we execute it here */
+			/* if an exception is pending, we execute it here */
             if (env->exception_index >= 0) {
                 if (env->exception_index >= EXCP_INTERRUPT) {
                     /* exit request from the cpu execution loop */
@@ -289,6 +290,7 @@ int cpu_exec(CPUState *env1)
                     /* if user mode only, we simulate a fake exception
                        which will be handled outside the cpu execution
                        loop */
+
 #if defined(TARGET_I386)
                     do_interrupt_user(env->exception_index,
                                       env->exception_is_int,
@@ -320,6 +322,8 @@ int cpu_exec(CPUState *env1)
                     do_interrupt(env);
 #elif defined(TARGET_ARM)
                     do_interrupt(env);
+#elif defined(TARGET_SRP)		/* hjc */
+					do_interrupt(env);
 #elif defined(TARGET_SH4)
 		    do_interrupt(env);
 #elif defined(TARGET_ALPHA)
@@ -501,6 +505,11 @@ int cpu_exec(CPUState *env1)
                         do_interrupt(env);
                         next_tb = 0;
                     }
+#elif defined(TARGET_SRP)
+					if(interrupt_request & CPU_INTERRUPT_HARD) {
+						env->interrupt_request  &= ~CPU_INTERRUPT_HARD;
+						do_interrupt(env); 
+					}
 #elif defined(TARGET_SH4)
                     if (interrupt_request & CPU_INTERRUPT_HARD) {
                         do_interrupt(env);
@@ -664,6 +673,7 @@ int cpu_exec(CPUState *env1)
 #elif defined(TARGET_ALPHA)
 #elif defined(TARGET_CRIS)
 #elif defined(TARGET_S390X)
+#elif defined(TARGET_SRP)
     /* XXXXX */
 #else
 #error unsupported target CPU

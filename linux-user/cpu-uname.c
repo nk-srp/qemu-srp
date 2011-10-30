@@ -1,7 +1,7 @@
 /*
  *  cpu to uname machine name map
  *
- *  Copyright (c) 2009 Loïc Minier
+ *  Copyright (c) 2009 Loï¿½c Minier
  *
  *  This program is free software; you can redistribute it and/or modify
  *  it under the terms of the GNU General Public License as published by
@@ -65,6 +65,8 @@ const char *cpu_to_uname_machine(void *cpu_env)
     if (family == 5)
         return "i586";
     return "i686";
+#elif defined(TARGET_SRP)
+	return "SRP";
 #else
     /* default is #define-d in each arch/ subdir */
     return UNAME_MACHINE;
