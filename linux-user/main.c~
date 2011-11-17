@@ -3375,7 +3375,9 @@ int main(int argc, char **argv, char **envp)
         gdbserver_start (gdbstub_port);
         gdb_handlesig(env, 0);
     }
+perror("hjc1");  //hjc test 
     cpu_loop(env);
+perror("hjc2");  //hjc test 
     /* never exits */
     return 0;
 }

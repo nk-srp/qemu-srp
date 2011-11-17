@@ -177,6 +177,7 @@ static unsigned int get_insn_length(unsigned int  insn)
 static void disas_srp_insn(CPUState * env, DisasContext *s)
 {
 	unsigned int insn, rs, rd, iLength;
+	int8_t imm8;
 	int32_t imm32;
 
 	TCGv tmp1 = new_tmp();
@@ -190,156 +191,162 @@ static void disas_srp_insn(CPUState * env, DisasContext *s)
 		rd =  (insn >> 16) & 0xff;
 
 	} else if(iLength == 3) {
+		
 		switch(insn >> 24) {
-		    	case 0x17:
+			case 0x17:
 				rd = (insn >> 16) & 0xff;
 				rs = (insn >> 8) & 0xff;
 				tmp1 = load_reg(s, rs);
-				tcg_gen_andi_i32(tmp1, tmp1, 0xff);
-				tcg_gen_mov_i32(cpu_R[rd], tmp1);
+                tcg_gen_andi_i32(tmp1, tmp1, 0xff);
+                tcg_gen_mov_i32(cpu_R[rd], tmp1);
 				break;
 			case 0x1C:   
 			case 0x1E:
-				rd = (insn >> 16) & 0xff;
-				rs = (insn >> 8) & 0xff;
-				addr = load_reg(s, rs);
-				tmp1 = gen_ld8s(addr, IS_USER(s));
-				store_reg(s, rd, tmp1);
+                rd = (insn >> 16) & 0xff;
+                rs = (insn >> 8) & 0xff;
+                addr = load_reg(s, rs);
+                tmp1 = gen_ld8s(addr, IS_USER(s));
+	            store_reg(s, rd, tmp1);
+                break;
+			case 0x1D:
+        	case 0x1F:
+                rs = (insn >> 16) & 0xff;
+                rd = (insn >> 8) & 0xff;
+                tmp1 = load_reg(s, rs);
+                addr = load_reg(s, rd);
+                gen_st8(tmp1, addr, IS_USER(s));
+	            break;
+        
+        	case 0x27:
+                rd = (insn >> 16) & 0xff;
+                rs = (insn >> 8) & 0xff;
+                tcg_gen_mov_tl(cpu_R[rd], cpu_R[rs]);
+                break;
+           
+        	case 0x2C:
+        	case 0x2E:
+                rd = (insn >> 16) & 0xff;
+                rs = (insn >> 8) & 0xff;
+                addr = load_reg(s, rs);
+                tmp1 = gen_ld32(addr, IS_USER(s));
+                store_reg(s, rd, tmp1);
+                break;
+
+        	case 0x2D:
+        	case 0x2F:
+                rs = (insn >> 16) & 0xff;
+                rd = (insn >> 8) & 0xff;
+                tmp1 = load_reg(s, rs);
+                addr = load_reg(s, rd);
+                gen_st32(tmp1, addr, IS_USER(s));
+                break;
+
+        	case 0x37:                            
+                rd = (insn >> 16) & 0xff;
+                imm8 = (insn >> 8) & 0xff;            
+                tcg_gen_movi_i32(cpu_R[rd], imm32);
+                break;
+        
+        	case 0x38:
+        	case 0x3A:
+                addr = (insn >> 16) & 0xff;
+                imm8 = (insn >> 8) & 0xff;
+                gen_st8(imm32, addr, IS_USER(s));
+                break;
+
+			case 0x39:
+        	case 0x3B:
+                rd = (insn >> 16) & 0xff;
+                imm8 = (insn >> 8) & 0xff;
+                addr = load_reg(s, rd);
+                gen_st8(imm32, addr, IS_USER(s));
+                break;
+
+        	case 0x3C:
+        	case 0x3E:
+                rd = (insn >> 16) & 0xff;
+                addr = (insn >> 8) & 0xff;
+                tmp1 = gen_ld32(addr, IS_USER(s));
+                store_reg(s, rd, tmp1);
+                break;
+       
+        	case 0x3D:
+        	case 0x3F:
+                rs = (insn >> 16) & 0xff;
+                addr = (insn >> 8) & 0xff;
+                tmp1 = load_reg(s, rs);
+                gen_st32(tmp1, addr, IS_USER(s));
+                break;
+		default:
 				break;
-			case 0x1D:
-			case 0x1F:
-				rs = (insn >> 16) & 0xff;	
-				rd = (insn >> 8) & 0xff;	
-				tmp1 = load_reg(s, rs);	
-				addr = load_reg(s, rd);	
-				gen_st8(tmp1, addr, IS_USER(s));	
-				break;
-
-			case 0x27:	
-				rd = (insn >> 16) & 0xff;	
-				rs = (insn >> 8) & 0xff;	
-				tcg_gen_mov_tl(cpu_R[rd], cpu_R[rs]);	
-				break;				
-			case 0x2C:	
-			case 0x2E:	
-				rd = (insn >> 16) & 0xff;	
-				rs = (insn >> 8) & 0xff;	
-				addr = load_reg(s, rs);	
-				tmp1 = gen_ld32(addr, IS_USER(s));	
-				store_reg(s, rd, tmp1);	
-				break;			
-			case 0x2D:	
-			case 0x2F:	
-				rs = (insn >> 16) & 0xff;	
-				rd = (insn >> 8) & 0xff;	
-				tmp1 = load_reg(s, rs);	
-				addr = load_reg(s, rd);	
-				gen_st32(tmp1, addr, IS_USER(s));	
-				break;
-				
-			case 0x37:                            	
-				rd = (insn >> 16) & 0xff;	
-				imm32 = (insn >> 8) & 0xff;            	
-				tcg_gen_movi_i32(cpu_R[rd], imm32);	
-				break;	
-			case 0x38:	
-			case 0x3A:	
-				rd = (insn >> 16) & 0xff;	
-				imm32 = (insn >> 8) & 0xff;	
-				tcg_gen_movi_i32(tmp1, imm32);
-				tcg_gen_movi_i32(addr, rd);
-				gen_st8(tmp1, addr, IS_USER(s));	
-				break;
-			case 0x39:	
-			case 0x3B:	
-				rd = (insn >> 16) & 0xff;	
-				imm32 = (insn >> 8) & 0xff;	
-				tcg_gen_movi_i32(tmp1, imm32);
-				addr = load_reg(s, rd);	
-				gen_st8(tmp1, addr, IS_USER(s));	
-				break;
-			case 0x3C:	
-			case 0x3E:	
-				rd = (insn >> 16) & 0xff;	
-				rs = (insn >> 8) & 0xff;	
-				tcg_gen_movi_i32(addr, rs);
-				tmp1 = gen_ld32(addr, IS_USER(s));	
-				store_reg(s, rd, tmp1);	
-				break;
-			case 0x3D:	
-			case 0x3F:	
-				rs = (insn >> 16) & 0xff;	
-				rs = (insn >> 8) & 0xff;	
-				tcg_gen_movi_i32(addr, rs);
-				tmp1 = load_reg(s, rs);	
-				gen_st32(tmp1, addr, IS_USER(s));	
-				break;
-			default:
-				break;
-		}		
+		}
+		
 	} else if(iLength == 4) {
 		rd = (insn >> 16) & 0xff;
 		rs = insn & 0xffff;
 
 	} else if(iLength == 5) {
+	
 	} else {
 		
 		switch(insn >> 24) {
-			case 0x47:	
-				rd = (insn >> 16) & 0xff;
+			case 0x47:
+		        rd = (insn >> 16) & 0xff;
 				imm32 = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(cpu_R[rd], imm32);
-				break;	
-			case 0x48:		
-			case 0x4A:	
-				rd = (insn >> 16) & 0xff;		
-				tcg_gen_movi_i32(addr, rd);
-				imm32 = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(tmp1, imm32);		
-				gen_st32(tmp1, addr, IS_USER(s));		
-				break;	
-			case 0x49:		
-			case 0x4B:		
-				rd = (insn >> 16) & 0xff;		
-				imm32 = ldl_code(s->pc + 2);		
-				tcg_gen_movi_i32(tmp1, imm32);		
-				gen_st32(tmp1, addr, IS_USER(s));		
-				break;
-			case 0x4C:		
-			case 0x4E:		
-				rd = (insn >> 16) & 0xff;		
-				rs = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(addr,rs);		
-				tmp1 = gen_ld32(addr, IS_USER(s));		
-				store_reg(s, rd, tmp1);		
-				break;
-			case 0x4D:		
-			case 0x4F:		
-				rs = (insn >> 16) & 0xff;		
-				rs = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(addr,rs);	
-				tmp1 = load_reg(s, rs);		
-				gen_st32(tmp1, addr, IS_USER(s));		
-				break;
-				
-			case 0x5C:		
-			case 0x5E:		
-				rd = (insn >> 16) & 0xff;		
-				rs = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(addr,rs);		
-				tmp1 = gen_ld8s(addr, IS_USER(s));		
-				store_reg(s, rd, tmp1);		
-				break;	
-			case 0x5D:		
-			case 0x5F:		
-				rs = (insn >> 16) & 0xff;		
-				rs = ldl_code(s->pc + 2);
-				tcg_gen_movi_i32(addr,rs);		
-				tmp1= load_reg(s, rs);		
-				gen_st8(tmp1, addr, IS_USER(s));		
-				break;
+		        tcg_gen_movi_i32(cpu_R[rd], imm32);
+                break;
+
+        case 0x48:
+        case 0x4A:
+                addr = (insn >> 16) & 0xff;
+                imm32 = ldl_code(s->pc + 2);
+                gen_st32(imm32, addr, IS_USER(s));
+                break;
+        
+        case 0x49:
+        case 0x4B:
+                rd = (insn >> 16) & 0xff;
+                imm32 = ldl_code(s->pc + 2);
+                addr = load_reg(s, rd);
+                gen_st32(imm32, addr, IS_USER(s));
+                break;
+
+        case 0x4C:
+        case 0x4E:
+                rd = (insn >> 16) & 0xff;
+                addr = ldl_code(s->pc + 2);
+                tmp1 = gen_ld32(addr, IS_USER(s));
+                store_reg(s, rd, tmp1);
+                break;
+
+        case 0x4D:
+        case 0x4F:
+                rs = (insn >> 16) & 0xff;
+                addr = ldl_code(s->pc + 2);
+                tmp1 = load_reg(s, rs);
+                gen_st32(tmp1, addr, IS_USER(s));
+                break;
+
+        case 0x5C:
+        case 0x5E:
+                rd = (insn >> 16) & 0xff;
+                addr = ldl_code(s->pc + 2);
+                tmp1 = gen_ld8s(addr, IS_USER(s));
+                store_reg(s, rd, tmp1);
+                break;
+ 
+        case 0x5D:
+        case 0x5F:
+                rs = (insn >> 16) & 0xff;
+                addr = ldl_code(s->pc + 2);
+                tmp1= load_reg(s, rs);
+                gen_st8(tmp1, addr, IS_USER(s));
+                break;
 
-			default:
+                //addr = rd;
+
+                //gen_st32((TCGv)imm32, addr, IS_USER(s));
+              
 				break;
 		}
 		
@@ -391,8 +398,8 @@ void cpu_dump_state(CPUState *env, FILE *f,
 {
     int i;
 
-    for(i=0;i<SRP_REGS;i++) {
-        cpu_fprintf(f, "%s=%08x", regnames[i], env->regs[i]);
+    for(i=0;i<60;i++) {
+        cpu_fprintf(f, "R%s=%08x", regnames[i], env->regs[i]);
         ((i % 4) == 0) ? cpu_fprintf(f, "\n") : cpu_fprintf(f, " ");
     }
    

@@ -52,11 +52,9 @@ enum srp_cpu_mode {
 
 #define NB_MMU_MODES 2
 
-#define SRP_REGS	60
-
 typedef struct CPUSRPState {
 	/*Regs */
-	uint32_t regs[SRP_REGS];
+	uint32_t regs[60];
 	
 	uint32_t irq;
 	uint32_t psw;

@@ -1,13 +1,14 @@
 
 #include "hw/hw.h"
 #include "hw/boards.h"
+#include "cpu.h"
 
 void cpu_save(QEMUFile * f, void * opaque)
 {
 	int i;
 	CPUSRPState *env = (CPUSRPState *)opaque;
 
-	for (i = 0; i < sizeof(env->regs) / sizeof(uint32_t); i++) {
+	for (i = 0; i < SRP_REGS; i++) {
 		qemu_put_be32(f, env->regs[i]);
 	}
 
@@ -28,7 +29,7 @@ int cpu_load(QEMUFile *f, void *opaque, int version_id)
 	if (version_id != CPU_SAVE_VERSION)
 		return -EINVAL;	
 
-	for (i = 0; i < sizeof(env->regs) / sizeof(uint32_t); i++) {
+	for (i = 0; i < SRP_REGS; i++) {
 		qemu_get_be32(f);
 	}
 
