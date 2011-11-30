@@ -826,9 +826,7 @@ void cpu_loop(CPUState *env)
 
     for(;;) {
         cpu_exec_start(env);
-
         trapnr = cpu_srp_exec(env);
-
         cpu_exec_end(env);
 
         switch(trapnr) {
@@ -3354,7 +3352,7 @@ int main(int argc, char **argv, char **envp)
 #elif defined(TARGET_SRP)
 	{
 		int i;
-        for(i = 0; i < 60; i++) {
+        for(i = 0; i < SRP_REGS; i++) {
             env->regs[i] = regs->uregs[i];
         }
 		env->pc = regs->pc;

@@ -95,12 +95,12 @@ enum {
     TCG_REG_PC,
 };
 
-#define TCG_TARGET_NB_REGS 16
+#define TCG_TARGET_NB_REGS 64
 
 #define TCG_CT_CONST_SRP 0x100
 
 /* used for function call generation */
-#define TCG_REG_CALL_STACK		TCG_REG_R13
+#define TCG_REG_CALL_STACK		TCG_REG_SP
 #define TCG_TARGET_STACK_ALIGN		8
 #define TCG_TARGET_CALL_ALIGN_ARGS	1
 #define TCG_TARGET_CALL_STACK_OFFSET	0
@@ -115,7 +115,7 @@ enum {
 
 enum {
     /* Note: must be synced with dyngen-exec.h */
-    TCG_AREG0 = TCG_REG_R7,
+    TCG_AREG0 = TCG_REG_R16,
 };
 
 static inline void flush_icache_range(unsigned long start, unsigned long stop)

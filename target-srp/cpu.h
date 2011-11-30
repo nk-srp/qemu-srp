@@ -84,6 +84,7 @@ typedef struct CPUSRPState {
 #define TARGET_VIRT_ADDR_SPACE_BITS 32
 
 CPUSRPState *cpu_srp_init(const char *cpu_model);
+void srp_translate_init(void);
 int cpu_srp_exec(CPUSRPState *s);
 void do_interrupt(CPUSRPState *s);
 int cpu_srp_signal_handler(int host_signum, void *pinfo,void *puc);

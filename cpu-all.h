@@ -350,10 +350,18 @@ static inline int ldsw_le_p(const void *ptr)
     return *(int16_t *)ptr;
 }
 
+#if defined(TARGET_SRP)
+static inline int ldl_le_p(const void *ptr)
+{
+    const uint8_t *b = ptr;
+    return (b[0] << 24) | (b[1] << 16) | (b[2] << 8) | b[3];
+}
+#else
 static inline int ldl_le_p(const void *ptr)
 {
     return *(uint32_t *)ptr;
 }
+#endif
 
 static inline uint64_t ldq_le_p(const void *ptr)
 {

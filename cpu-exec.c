@@ -291,7 +291,6 @@ int cpu_exec(CPUState *env1)
                     /* if user mode only, we simulate a fake exception
                        which will be handled outside the cpu execution
                        loop */
-
 #if defined(TARGET_I386)
                     do_interrupt_user(env->exception_index,
                                       env->exception_is_int,
@@ -324,7 +323,6 @@ int cpu_exec(CPUState *env1)
 #elif defined(TARGET_ARM)
                     do_interrupt(env);
 #elif defined(TARGET_SRP)		/* hjc */
-perror("hjc");  //hjc test
 					do_interrupt(env);
 #elif defined(TARGET_SH4)
 		    do_interrupt(env);
@@ -511,6 +509,7 @@ perror("hjc");  //hjc test
 					if(interrupt_request & CPU_INTERRUPT_HARD) {
 						env->interrupt_request  &= ~CPU_INTERRUPT_HARD;
 						do_interrupt(env); 
+						next_tb = 0;
 					}
 #elif defined(TARGET_SH4)
                     if (interrupt_request & CPU_INTERRUPT_HARD) {
@@ -623,7 +622,7 @@ perror("hjc");  //hjc test
 #define env cpu_single_env
 #endif
                     next_tb = tcg_qemu_tb_exec(tc_ptr);
-perror("hjc1");  //hjc test 
+
                     if ((next_tb & 3) == 2) {
                         /* Instruction counter expired.  */
                         int insns_left;

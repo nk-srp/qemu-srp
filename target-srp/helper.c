@@ -26,6 +26,19 @@
 #include "cpu.h"
 #include "exec-all.h"
 
+void cpu_reset(CPUSRPState *env)
+{
+	if (qemu_loglevel_mask(CPU_LOG_RESET)) {
+        qemu_log("CPU Reset (CPU %d)\n", env->cpu_index);
+        log_cpu_state(env, 0);
+    }
+
+	memset(env, 0, offsetof(CPUSRPState, breakpoints));
+
+	tlb_flush(env, 1);
+}
+
+
 CPUSRPState *cpu_srp_init(const char *cpu_model)
 {
 	CPUSRPState *env;
@@ -36,10 +49,12 @@ CPUSRPState *cpu_srp_init(const char *cpu_model)
 	cpu_exec_init(env);
 	if(!inited) {
 		inited = 1;
+		srp_translate_init();
 	}
 
 	env->cpu_model_str = cpu_model;
 	
+	cpu_reset(env);
 	qemu_init_vcpu(env);
     return env;
 }

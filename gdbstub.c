@@ -981,6 +981,22 @@ static int cpu_gdb_write_register(CPUState *env, uint8_t *mem_buf, int n)
     return 0;
 }
 
+#elif defined (TARGET_SRP)
+
+#define NUM_CORE_REGS 64
+//#define GDB_CORE_XML "srp-core.xml"
+
+static int cpu_gdb_read_register(CPUState *env, uint8_t *mem_but, int n)
+{
+	return 0;
+}
+
+static int cpu_gdb_write_register(CPUState *env, uint8_t *mem_but, int n)
+{
+
+	return 0;
+}
+
 #elif defined (TARGET_M68K)
 
 #define NUM_CORE_REGS 18

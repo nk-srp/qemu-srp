@@ -9103,6 +9103,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
                 }
             }
         }
+
         if (search_pc) {
             j = gen_opc_ptr - gen_opc_buf;
             if (lj < j) {
