@@ -59,6 +59,17 @@ CPUSRPState *cpu_srp_init(const char *cpu_model)
     return env;
 }
 
+//dxw begin
+uint32_t psw_read(CPUSRPState *env)
+{
+    int ZF;
+    ZF = (env->ZF == 0);
+    return (env->CF << 15) | (ZF << 14)
+        | ((env->SF & 0x80000000) >> 18) | ((env->OF & 0x80000000) >> 19)
+        | ((env->WI) << 7) | ((env->WD) << 6) | ((env->TS) << 5) ;   // WI, WD, TS to be added
+
+}//dxw end
+
 #if defined(CONFIG_USER_ONLY)
 void do_interrupt(CPUSRPState *env)
 {

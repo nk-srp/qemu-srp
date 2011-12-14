@@ -27,3 +27,53 @@ void raise_exception(int tt)
     cpu_loop_exit();
 }
 
+//dxw begin
+uint32_t HELPER (add_cc)(uint32_t a, uint32_t b)
+{
+    uint32_t result;
+    result = a + b;
+    env->SF = env->ZF = result;
+    env->CF = result < a;
+    env->OF = (a ^ b ^ -1) & (a ^ result);
+    return result;
+}
+
+
+
+uint32_t HELPER(sub_cc)(uint32_t a, uint32_t b)
+{
+    uint32_t result;
+    result = a - b;
+    env->SF = env->ZF = result;
+    env->CF = a >= b;
+    env->OF = (a ^ b) & (a ^ result);
+    return result;
+}
+
+
+uint32_t HELPER(rol_cc)(uint32_t x)
+{
+    env->CF = (x >> 31) & 1;
+    return ((uint32_t)x << 1) | ((x >> 31) & 1);
+ }
+
+
+uint32_t HELPER(ror_cc)(uint32_t x)
+{
+    env->CF = x & 1;
+    return ((uint32_t)x >> 1) | (x << 31);
+ }
+
+uint32_t HELPER(rcl_cc)(uint32_t x)
+{
+    uint32_t temp = env->CF;
+    env->CF = (x >> 31) & 1;
+    return ((uint32_t)x << 1) | (temp & 1);
+ }
+
+uint32_t HELPER(rcr_cc)(uint32_t x)
+{
+    uint32_t temp = env->CF;
+    env->CF = x & 1;
+    return ((uint32_t)x >> 1) |(temp << 31);
+}  // dxw end

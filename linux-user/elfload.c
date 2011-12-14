@@ -356,8 +356,6 @@ static inline void init_thread(struct target_pt_regs *regs, struct image_info *i
 	regs->pc = infop->entry;
 }
 
-#define ELF_EXEC_PAGESIZE        4096
-
 #define ELF_NREG  64
 typedef target_elf_greg_t target_elf_gregset_t[ELF_NREG];
 
@@ -374,6 +372,9 @@ static void elf_core_copy_regs(target_elf_gregset_t *regs, const CPUState *env)
 	(*regs)[63] = tswapl(env->pc);
 
 }
+
+#define USE_ELF_CORE_DUMP
+#define ELF_EXEC_PAGESIZE        4096
 
 #endif /* TARGET_SRP */
 

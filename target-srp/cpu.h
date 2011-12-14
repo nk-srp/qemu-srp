@@ -21,7 +21,7 @@
 
 #define TARGET_LONG_BITS 32
 
-//#define ELF_MACHINE EM_SRP  elf.h #define EM_SRP 68
+#define ELF_MACHINE EM_SRP  //elf.h #define EM_SRP 0x4e4b
 
 #define CPUState struct CPUSRPState
 
@@ -64,6 +64,15 @@ typedef struct CPUSRPState {
 	uint32_t sp;
 	uint32_t pc;
 
+	/* PSW */
+	uint32_t CF; /* 0 or 1 */
+	uint32_t OF; /* V is the bit 31. All other bits are undefined */
+	uint32_t SF; /* S is bit 31. All other bits are undefined.  */
+	uint32_t ZF; /* Z set if zero.  */
+
+	uint32_t WI;
+	uint32_t WD;
+	uint32_t TS;
 	
 /* Callback for vectored interrupt controller.  */
     int (*get_irq_vector)(struct CPUSRPState *);
@@ -107,6 +116,9 @@ static inline int cpu_mmu_index (CPUSRPState *env)
 {
   	return SRP_CPU_MODE_USR ? 1 : 0;
 }
+
+/* Return the current PSW value.  */
+uint32_t psw_read(CPUSRPState *env);
 
 #if defined(CONFIG_USER_ONLY)
 static inline void cpu_clone_regs(CPUState *env, target_ulong newsp)
