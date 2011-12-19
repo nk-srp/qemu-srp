@@ -54,6 +54,12 @@ typedef struct DisasContext {
 #define IS_USER(s) (s->user)
 #endif
 
+/* These instructions trap after executing, so defer them until after the
+   conditional executions state has been updated.  */
+#define DISAS_WFI 4
+#define DISAS_SWI 5
+
+
 static TCGv_ptr cpu_env;
 static TCGv_i32 cpu_R[64];
 
@@ -120,6 +126,25 @@ static void store_reg(DisasContext *s, int reg, TCGv var)
     tcg_gen_mov_i32(cpu_R[reg], var);
     dead_tmp(var);
 }
+
+/*static void gen_exception(int excp)
+{
+    TCGv tmp = new_tmp();
+    tcg_gen_movi_i32(tmp, excp);
+    gen_helper_exception(tmp);
+    dead_tmp(tmp);
+}
+
+static inline void
+gen_set_condexec (DisasContext *s)
+{
+    if (s->condexec_mask) {
+        uint32_t val = (s->condexec_cond << 4) | (s->condexec_mask >> 1);
+        TCGv tmp = new_tmp();
+        tcg_gen_movi_i32(tmp, val);
+        store_cpu_field(tmp, condexec_bits);
+    }
+}*/
 
 
 #define gen_set_CF(var) tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, CF))
@@ -354,7 +379,25 @@ static void disas_srp_insn(CPUState * env, DisasContext *s)
 	
 	switch(iLength) {
 		case 1:
-			goto illegal_op;
+			switch(insn >> 24){
+				case 0x00:
+				case 0x01:
+				case 0x02:
+					tcg_gen_exit_tb(0);
+					break;
+				case 0x03:
+				case 0x04:
+				case 0x05:
+				case 0x06:
+				case 0x07:
+				case 0x08:
+				case 0x09:
+				case 0x0a:
+				case 0x0b:
+				default:
+					goto illegal_op;
+			}
+			break;
 		case 2: 
 			rd =  (insn >> 16) & 0xff;
 			switch(insn >> 24) {
@@ -1452,6 +1495,70 @@ static inline void gen_intermediate_code_internal(CPUState *env,
         }
         gen_io_end();
     }
+
+	/* At this stage dc->condjmp will only be set when the skipped
+	       instruction was a conditional branch or trap, and the PC has
+	       already been written.  */
+	    if (unlikely(env->singlestep_enabled)) {
+	        /* Make sure the pc is updated, and raise a debug exception.  */
+	        if (dc->condjmp) {
+	            //gen_set_condexec(dc);
+	            if (dc->is_jmp == DISAS_SWI) {
+	                //gen_exception(EXCP_SWI);
+	            } else {
+	                //gen_exception(EXCP_DEBUG);
+	            }
+	            gen_set_label(dc->condlabel);
+	        }
+	        if (dc->condjmp || !dc->is_jmp) {
+	            gen_set_pc_im(dc->pc);
+	            dc->condjmp = 0;
+	        }
+	        //gen_set_condexec(dc);
+	        if (dc->is_jmp == DISAS_SWI && !dc->condjmp) {
+	            //gen_exception(EXCP_SWI);
+	        } else {
+	            /* FIXME: Single stepping a WFI insn will not halt
+	               the CPU.  */
+	            //gen_exception(EXCP_DEBUG);
+	        }
+	    } else {
+	        /* While branches must always occur at the end of an IT block,
+	           there are a few other things that can cause us to terminate
+	           the TB in the middel of an IT block:
+	            - Exception generating instructions (bkpt, swi, undefined).
+	            - Page boundaries.
+	            - Hardware watchpoints.
+	           Hardware breakpoints have already been handled and skip this code.
+	         */
+	        //gen_set_condexec(dc);
+	        switch(dc->is_jmp) {
+	        case DISAS_NEXT:
+	            gen_goto_tb(dc, 1, dc->pc);
+	            break;
+	        default:
+	        case DISAS_JUMP:
+	        case DISAS_UPDATE:
+	            /* indicate that the hash table must be used to find the next TB */
+	            tcg_gen_exit_tb(0);
+	            break;
+	        case DISAS_TB_JUMP:
+	            /* nothing more to generate */
+	            break;
+	        case DISAS_WFI:
+	            //gen_helper_wfi();
+	            break;
+	        case DISAS_SWI:
+	            //gen_exception(EXCP_SWI);
+	            break;
+	        }
+	        if (dc->condjmp) {
+	            gen_set_label(dc->condlabel);
+	        //    gen_set_condexec(dc);
+	            gen_goto_tb(dc, 1, dc->pc);
+	            dc->condjmp = 0;
+	        }
+	    }
 
 // done_generating:
     gen_icount_end(tb, num_insns);
