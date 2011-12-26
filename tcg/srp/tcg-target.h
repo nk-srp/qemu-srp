@@ -48,7 +48,7 @@ enum {
     TCG_REG_R17,
     TCG_REG_R18,
     TCG_REG_R19,
-    TCG_REG_R20
+    TCG_REG_R20,
     TCG_REG_R21,
     TCG_REG_R22,
     TCG_REG_R23,
@@ -115,7 +115,7 @@ enum {
 
 enum {
     /* Note: must be synced with dyngen-exec.h */
-    TCG_AREG0 = TCG_REG_R16,
+    TCG_AREG0 = TCG_REG_R10,
 };
 
 static inline void flush_icache_range(unsigned long start, unsigned long stop)
