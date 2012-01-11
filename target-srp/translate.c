@@ -100,15 +100,22 @@ static void dead_tmp(TCGv tmp) {
 	num_temps--;
 }
 
-/* Set a variable to the value of a CPU register.  */
-static void load_reg_var(DisasContext *s, TCGv var, int reg) {
-	tcg_gen_mov_i32(var, cpu_R[reg >> 2]);
+static void gen_exception(int excp) {
+	TCGv tmp = new_tmp();
+	tcg_gen_movi_i32(tmp, excp);
+	gen_helper_exception(tmp);
+	dead_tmp(tmp);
 }
+
+///* Set a variable to the value of a CPU register.  */
+//static void load_reg_var(DisasContext *s, TCGv var, int reg) {
+//	tcg_gen_mov_i32(var, cpu_R[reg >> 2]);
+//}
 
 /* Create a new temporary and set it to the value of a CPU register.  */
 static inline TCGv load_reg(DisasContext *s, int reg) {
 	TCGv tmp = new_tmp();
-	load_reg_var(s, tmp, reg);
+	tcg_gen_mov_i32(tmp, cpu_R[reg >> 2]);
 	return tmp;
 }
 
@@ -119,14 +126,7 @@ static void store_reg(DisasContext *s, int reg, TCGv var) {
 	dead_tmp(var);
 }
 
-/*static void gen_exception(int excp)
- {
- TCGv tmp = new_tmp();
- tcg_gen_movi_i32(tmp, excp);
- gen_helper_exception(tmp);
- dead_tmp(tmp);
- }
-
+/*
  static inline void
  gen_set_condexec (DisasContext *s)
  {
@@ -140,13 +140,13 @@ static void store_reg(DisasContext *s, int reg, TCGv var) {
 
 #define gen_set_CF(var) tcg_gen_st_i32(var, cpu_env, offsetof(CPUState, CF))
 
-/* Set CF to the top bit of var.  */
-static void gen_set_CF_bit31(TCGv var) {
-	TCGv tmp = new_tmp();
-	tcg_gen_shri_i32(tmp, var, 31);
-	gen_set_CF(tmp);
-	dead_tmp(tmp);
-}
+///* Set CF to the top bit of var.  */
+//static void gen_set_CF_bit31(TCGv var) {
+//	TCGv tmp = new_tmp();
+//	tcg_gen_shri_i32(tmp, var, 31);
+//	gen_set_CF(tmp);
+//	dead_tmp(tmp);
+//}
 
 /* Set S and Z flags from var.  */
 static inline void gen_logic_CC(TCGv var) {
@@ -244,34 +244,23 @@ static inline void gen_pop(DisasContext *s, int reg) {
 }
 //end
 
-/* ----------------------------------2011-11-29 by wanglizhi ------------------------------------------*/
-//begin
-static inline TCGv load_reg_32_8(DisasContext *s, int reg) {
-	TCGv tmp1, tmp2;
-	tmp1 = new_tmp();
-	tmp2 = new_tmp();
-	tmp1 = load_reg(s, reg >> 2);
-	tmp2.i32 = 0xff << ((3 - reg % 3) << 3);
-	tcg_gen_and_i32(tmp1, tmp2, tmp2);
-	dead_tmp(tmp2);
-	return tmp1;
+
+static inline TCGv load_reg_8(DisasContext *s, int reg) {
+	TCGv tmp;
+	tmp = load_reg(s, reg);
+	tcg_gen_shri_i32(tmp, tmp, (3 - reg % 3) * 8);
+	tcg_gen_andi_i32(tmp, tmp, 0xff);
+	return tmp;
 }
 
-static inline void store_reg_32_8(DisasContext *s, int reg, TCGv var) {
-	TCGv tmp1, tmp2, tmp3;
-	tmp1 = new_tmp();
-	tmp2 = new_tmp();
-	tmp3 = new_tmp();
-	tmp1 = load_reg(s, reg >> 2);
-	/*	tcg_gen_andi_i32(tmp2,reg,0x03);
-	 tcg_gen_shli_i32(tmp3 ,0xff,(3-tmp2)<<3);
-	 tcg_gen_ori_i32(tmp1,tmp1,tmp3);
-	 tcg_gen_shli_i32(var,var,(3-tmp2)<<3);
-	 tcg_gen_ori_i32(var,var,tmp1);
-	 store_reg(s,reg>>2,var);  */
-	dead_tmp(tmp1);
-	dead_tmp(tmp2);
-	dead_tmp(tmp3);
+static inline void store_reg_8(DisasContext *s, int reg, TCGv var) {
+	TCGv tmp;
+	tmp = load_reg(s, reg);
+	tcg_gen_andi_i32(tmp, tmp, ~(0xff << ((3 - reg % 4) * 8)));
+	tcg_gen_shli_i32(var, var, (3 - reg % 4) * 8);
+	tcg_gen_or_i32(tmp, tmp, var);
+	store_reg(s, reg, tmp);
+	dead_tmp(var);
 }
 
 static inline void check_ZF_SF_8(DisasContext *s, TCGv var) {
@@ -297,8 +286,6 @@ static inline void check_ZF_SF_8(DisasContext *s, TCGv var) {
 	}
 
 }
-//end
-
 
 static unsigned int get_insn_length(unsigned int insn) {
 	unsigned int length;
@@ -339,9 +326,7 @@ static unsigned int get_insn_length(unsigned int insn) {
 static void disas_srp_insn(CPUState * env, DisasContext *s) {
 	unsigned int insn, rs, rd, iLength, val;
 	int32_t imm32, offset;
-	TCGv tmp = new_tmp();
-	TCGv tmp1 = new_tmp();
-	TCGv tmp2 = new_tmp();
+	TCGv tmp, tmp1, tmp2;
 	TCGv addr = new_tmp();
 
 	insn = ldl_code(s->pc);
@@ -352,8 +337,10 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		switch (insn >> 24) {
 		case 0x00:
 		case 0x01:
+			gen_exception(EXCP_SWI);
+			s->is_jmp = DISAS_SWI;
+			break;
 		case 0x02:
-			tcg_gen_exit_tb(0);
 			break;
 		case 0x03:
 		case 0x04:
@@ -561,201 +548,198 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			store_reg(s, rd, tmp1);
 			break;
-			//end
-			/* --------------------------2011-11-29 by wanglizhi----------------------------- */
-			//begin
 		case 0xE0:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x7f);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE1:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xBf);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE2:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xDf);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE3:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xEf);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE4:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xF7);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE5:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xFB);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE6:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xFD);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE7:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0xFE);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE8:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x80);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xE9:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x40);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xEA:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x20);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xEB:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x10);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xEC:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x08);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xED:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x04);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xEE:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x02);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xEF:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_andi_i32(tmp1, tmp1, 0x01);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 
 		case 0xF0:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x80);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF1:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x40);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF2:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x20);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF3:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x10);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF4:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x08);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF5:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x04);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF6:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x02);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF7:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_ori_i32(tmp1, tmp1, 0x01);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF8:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x80);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xF9:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x40);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFA:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x20);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFB:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x10);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFC:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x08);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFD:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x04);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFE:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x02);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0xFF:
-			tmp1 = load_reg_32_8(s, rs);
+			tmp1 = load_reg_8(s, rd);
 			tcg_gen_xori_i32(tmp1, tmp1, 0x01);
 			check_ZF_SF_8(s, tmp1);
-			store_reg_32_8(s, rs, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 			//end
 		default:
@@ -955,39 +939,30 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			tcg_gen_sub_i32(tmp, tmp1, tmp2);
 			gen_logic_CC(tmp);
 			break;
+
 		case 0x17:
 			rd = (insn >> 16) & 0xff;
 			rs = (insn >> 8) & 0xff;
-			tmp1 = load_reg(s, rs);
-			tcg_gen_shri_i32(tmp1, tmp1, (3 - rs % 4) * 8);
-			tcg_gen_andi_i32(tmp1, tmp1, 0xff);
-			tmp2 = load_reg(s, rd);
-			tcg_gen_andi_i32(tmp2, tmp2, ~(0xff << ((3 - rd % 4) * 8)));
-			tcg_gen_ori_i32(tmp2, tmp2, tmp1.i32 << (3 - rd % 4) * 8);
-			tcg_gen_mov_i32(cpu_R[rd >> 2], tmp2);
+			tmp = load_reg_8(s, rs);
+			store_reg_8(s, rd, tmp);
 			break;
 		case 0x1C:
 		case 0x1E:
 			rd = (insn >> 16) & 0xff;
 			rs = (insn >> 8) & 0xff;
 			addr = load_reg(s, rs);
-			tmp1 = gen_ld8s(addr, IS_USER(s));
-			tmp2 = load_reg(s, rd);
-			tcg_gen_andi_i32(tmp2, tmp2, ~(0xff << ((3 - rd % 4) * 8)));
-			tcg_gen_ori_i32(tmp2, tmp2, tmp1.i32 << (3 - rd % 4) * 8);
-			store_reg(s, rd, tmp2);
+			tmp = new_tmp();
+			tmp = gen_ld8s(addr, IS_USER(s));
+			store_reg_8(s, rd, tmp);
 			break;
 		case 0x1D:
 		case 0x1F:
 			rs = (insn >> 16) & 0xff;
 			rd = (insn >> 8) & 0xff;
 			addr = load_reg(s, rs);
-			tmp1 = load_reg(s, rd);
-			tcg_gen_shri_i32(tmp1, tmp1, (3 - rd % 4) * 8);
-			tcg_gen_andi_i32(tmp1, tmp1, 0xff);
+			tmp1 = load_reg_8(s, rd);
 			gen_st8(tmp1, addr, IS_USER(s));
 			break;
-
 		case 0x27:
 			rd = (insn >> 16) & 0xff;
 			rs = (insn >> 8) & 0xff;
@@ -1013,10 +988,8 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		case 0x37:
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
-			tmp1 = load_reg(s, rd);
-			tcg_gen_andi_i32(tmp1, tmp1, ~(0xff << ((3 - rd % 4) * 8)));
-			tcg_gen_ori_i32(tmp1, tmp1, imm32 << (3 - rd % 4) * 8);
-			tcg_gen_mov_i32(cpu_R[rd >> 2], tmp1);
+			tmp1 = load_reg_8(s, rd);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0x38:
 		case 0x3A:
@@ -1040,14 +1013,14 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			rs = (insn >> 8) & 0xff;
 			tcg_gen_movi_i32(addr, rs);
 			tmp1 = gen_ld32(addr, IS_USER(s));
-			store_reg(s, rd, tmp1);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0x3D:
 		case 0x3F:
 			rs = (insn >> 16) & 0xff;
 			rd = (insn >> 8) & 0xff;
 			tcg_gen_movi_i32(addr, rd);
-			tmp1 = load_reg(s, rs);
+			tmp1 = load_reg_8(s, rs);
 			gen_st32(tmp1, addr, IS_USER(s));
 			break;
 			/*********************************Arithmetic Operations******************************/
@@ -1184,6 +1157,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xC4:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 14);
@@ -1198,6 +1172,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xC5:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 12);
@@ -1212,6 +1187,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xC6:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 12);
@@ -1230,6 +1206,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xC7:
+			offset = (insn >> 8) & 0xffff;
 			val = (int32_t) s->pc;
 			val += (offset) + 3;
 			gen_jmp(s, val);
@@ -1280,6 +1257,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xCC:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 14);
@@ -1294,6 +1272,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xCD:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 12);
@@ -1308,6 +1287,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			}
 			break;
 		case 0xCE:
+			offset = (insn >> 8) & 0xffff;
 			tmp1 = load_reg(s, 61);
 			tmp2 = load_reg(s, 61);
 			tcg_gen_shri_i32(tmp1, tmp1, 12);
@@ -1335,7 +1315,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		//begin
 		rs = insn & 0xff;
 		offset = (insn >> 8) & 0xffff;
-		tmp1 = load_reg_32_8(s, rs);
+		tmp1 = load_reg_8(s, rs);
 		switch (insn >> 24) {
 		case 0xB0:
 			tcg_gen_shri_i32(tmp1, tmp1, 1);
@@ -1476,6 +1456,7 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			tcg_gen_subi_i32(tmp, tmp1, imm32);
 			gen_logic_CC(tmp);
 			break;
+
 		case 0x47:
 			rd = (insn >> 16) & 0xff;
 			imm32 = ldl_code(s->pc + 2);
@@ -1520,19 +1501,14 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			rs = ldl_code(s->pc + 2);
 			tcg_gen_movi_i32(addr, rs);
 			tmp1 = gen_ld8s(addr, IS_USER(s));
-			tmp2 = load_reg(s, rd);
-			tcg_gen_andi_i32(tmp2, tmp2, ~(0xff << (3 - rd % 4) * 8));
-			tcg_gen_ori_i32(tmp2, tmp2, tmp1.i32 << (3 - rd % 4) * 8);
-			store_reg(s, rd, tmp2);
+			store_reg_8(s, rd, tmp1);
 			break;
 		case 0x5D:
 		case 0x5F:
 			rd = (insn >> 16) & 0xff;
 			rs = ldl_code(s->pc + 2);
 			tcg_gen_movi_i32(addr, rs);
-			tmp1 = load_reg(s, rd);
-			tcg_gen_shri_i32(tmp1, tmp1, (3 - rd % 4) * 8);
-			tcg_gen_andi_i32(tmp1, tmp1, 0xff);
+			tmp1 = load_reg_8(s, rd);
 			gen_st8(tmp1, addr, IS_USER(s));
 			break;
 		default:
@@ -1541,16 +1517,16 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		break;
 	default:
 		illegal_op:
-		//             gen_set_condexec(s);
+		//       gen_set_condexec(s);
 		gen_set_pc_im(s->pc - iLength);
-		//             gen_exception(EXCP_UDEF);
+		gen_exception(EXCP_UDEF);
 		s->is_jmp = DISAS_JUMP;
 		break;
 	}
 
-	dead_tmp(tmp);
-	dead_tmp(tmp1);
-	dead_tmp(tmp2);
+	//	dead_tmp(tmp);
+	//	dead_tmp(tmp1);
+	//	dead_tmp(tmp2);
 	dead_tmp(addr);
 
 	s->pc += iLength;
@@ -1717,7 +1693,7 @@ static inline void gen_intermediate_code_internal(CPUState *env,
 			//gen_helper_wfi();
 			break;
 		case DISAS_SWI:
-			//gen_exception(EXCP_SWI);
+			gen_exception(EXCP_SWI);
 			break;
 		}
 		if (dc->condjmp) {
@@ -1768,7 +1744,13 @@ void cpu_dump_state(CPUState *env, FILE *f, int(*cpu_fprintf)(FILE *f,
 		((i % 4) == 3) ? cpu_fprintf(f, "\n") : cpu_fprintf(f, " ");
 	}
 
-	cpu_fprintf(f, "PSW=%08x,  SP=%08x,  PC=%08x\n", env->psw, env->sp, env->pc);
+	uint32_t psr;
+	psr = psw_read(env);
+	cpu_fprintf(f, "PSR=%08x %c%c%c%c\t  ", psr,
+			psr & (1 << 16) ? 'C' : '-', psr & (1 << 15) ? 'Z' : '-',
+	        psr & (1 << 14) ? 'S' : '-', psr & (1 << 13) ? 'O' : '-');
+
+	cpu_fprintf(f, " SP=%08x, PC=%08x\n", env->sp, env->pc);
 
 }
 

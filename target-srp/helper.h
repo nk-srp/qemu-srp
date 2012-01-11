@@ -10,4 +10,6 @@ DEF_HELPER_1(rcr_cc, i32, i32)
 DEF_HELPER_1(rcl_cc, i32, i32)
 //dxw end
 
+DEF_HELPER_1(exception, void, i32)
+
 #include "def-helper.h"

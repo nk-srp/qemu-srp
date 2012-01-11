@@ -31,7 +31,7 @@
 #define TARGET_HAS_ICE 1  //something abou Debug breakpoint--used in file exec.c
 
 /* all the instructions of interrupt, in case the TCG doesn't contain any of them */
-#define EXCP_NOP	0x00
+#define EXCP_UDEF	-1
 #define EXCP_SWI	0x01
 #define EXCP_RET	0x02
 #define EXCP_IRET	0x03

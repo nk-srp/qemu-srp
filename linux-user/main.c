@@ -830,10 +830,14 @@ void cpu_loop(CPUState *env)
         cpu_exec_end(env);
 
         switch(trapnr) {
-		case EXCP_NOP:
+		case EXCP_UDEF:
+			goto error;
 		case EXCP_SWI:
+			fprintf(stderr, "qemu: programme exit!\n");
+			cpu_dump_state(env, stderr, fprintf, 0);
+			return ;
 		default:
-		//error:
+		error:
 			fprintf(stderr, "qemu: unhandled CPU exception 0x%x - aborting\n",
                     trapnr);
             cpu_dump_state(env, stderr, fprintf, 0);
