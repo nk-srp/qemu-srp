@@ -38,8 +38,6 @@ uint32_t HELPER (add_cc)(uint32_t a, uint32_t b)
     return result;
 }
 
-
-
 uint32_t HELPER(sub_cc)(uint32_t a, uint32_t b)
 {
     uint32_t result;
@@ -55,8 +53,7 @@ uint32_t HELPER(rol_cc)(uint32_t x)
 {
     env->CF = (x >> 31) & 1;
     return ((uint32_t)x << 1) | ((x >> 31) & 1);
- }
-
+}
 
 uint32_t HELPER(ror_cc)(uint32_t x)
 {
@@ -77,3 +74,9 @@ uint32_t HELPER(rcr_cc)(uint32_t x)
     env->CF = x & 1;
     return ((uint32_t)x >> 1) |(temp << 31);
 }  // dxw end
+
+void HELPER(exception)(uint32_t excp)
+{
+    env->exception_index = excp;
+    cpu_loop_exit();
+}
