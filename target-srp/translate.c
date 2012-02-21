@@ -248,7 +248,11 @@ static inline void gen_pop(DisasContext *s, int reg) {
 static inline TCGv load_reg_8(DisasContext *s, int reg) {
 	TCGv tmp;
 	tmp = load_reg(s, reg);
+<<<<<<< HEAD
 	tcg_gen_shri_i32(tmp, tmp, (3 - reg % 4) * 8);
+=======
+	tcg_gen_shri_i32(tmp, tmp, (3 - reg % 3) * 8);
+>>>>>>> 8e5ed611dc06f532dff3266d0b629b3b1a4bcbbe
 	tcg_gen_andi_i32(tmp, tmp, 0xff);
 	return tmp;
 }
@@ -326,7 +330,12 @@ static unsigned int get_insn_length(unsigned int insn) {
 static void disas_srp_insn(CPUState * env, DisasContext *s) {
 	unsigned int insn, rs, rd, iLength, val;
 	int32_t imm32, offset;
+<<<<<<< HEAD
 	TCGv tmp, tmp1, tmp2, addr;
+=======
+	TCGv tmp, tmp1, tmp2;
+	TCGv addr = new_tmp();
+>>>>>>> 8e5ed611dc06f532dff3266d0b629b3b1a4bcbbe
 
 	insn = ldl_code(s->pc);
 	iLength = get_insn_length(insn);
@@ -950,9 +959,15 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			rd = (insn >> 16) & 0xff;
 			rs = (insn >> 8) & 0xff;
 			addr = load_reg(s, rs);
+<<<<<<< HEAD
 			tmp = gen_ld8s(addr, IS_USER(s));
 			store_reg_8(s, rd, tmp);
 			dead_tmp(addr);
+=======
+			tmp = new_tmp();
+			tmp = gen_ld8s(addr, IS_USER(s));
+			store_reg_8(s, rd, tmp);
+>>>>>>> 8e5ed611dc06f532dff3266d0b629b3b1a4bcbbe
 			break;
 		case 0x1D:
 		case 0x1F:
@@ -1527,6 +1542,14 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		break;
 	}
 
+<<<<<<< HEAD
+=======
+	//	dead_tmp(tmp);
+	//	dead_tmp(tmp1);
+	//	dead_tmp(tmp2);
+	dead_tmp(addr);
+
+>>>>>>> 8e5ed611dc06f532dff3266d0b629b3b1a4bcbbe
 	s->pc += iLength;
 }
 
