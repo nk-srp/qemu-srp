@@ -87,6 +87,27 @@ uint32_t HELPER(rcr_cc)(uint32_t x)
     return ((uint32_t)x >> 1) |(temp << 31);
 }
 
+void HELPER(logic_cc)(uint32_t x)
+{
+	if((x >> 31) & 1)
+		env->SF = 1;
+	else
+		env->SF = 0;
+	if (x == 0)
+		env->ZF = 1;
+	else
+		env->ZF = 0;
+
+}
+
+void HELPER(logic_ZF) (uint32_t x)
+{
+	if (x == 0)
+		env->ZF = 1;
+	else
+		env->ZF = 0;
+
+}
 
 // dxw end
 
