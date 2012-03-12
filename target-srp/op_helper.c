@@ -18,7 +18,6 @@
  */
 #include "exec.h"
 #include "helper.h"
-
 #define SIGNBIT (uint32_t)0x80000000
 
 void raise_exception(int tt)
@@ -28,13 +27,21 @@ void raise_exception(int tt)
 }
 
 //dxw begin
+
+
+
 uint32_t HELPER (add_cc)(uint32_t a, uint32_t b)
 {
     uint32_t result;
     result = a + b;
-    env->SF = env->ZF = result;
+    env->SF = (result >> 31) & 1;
+    if(result == 0)
+    	env->ZF = 1;
+    else
+    	env->ZF = 0;
     env->CF = result < a;
     env->OF = (a ^ b ^ -1) & (a ^ result);
+    env->OF = (env->OF >> 31) & 1;
     return result;
 }
 
@@ -42,22 +49,27 @@ uint32_t HELPER(sub_cc)(uint32_t a, uint32_t b)
 {
     uint32_t result;
     result = a - b;
-    env->SF = env->ZF = result;
-    env->CF = a >= b;
+    env->SF = (result >> 31) & 1;
+    if(result == 0)
+    	env->ZF = 1;
+    else
+    	env->ZF = 0;
+    env->CF = a < b;
     env->OF = (a ^ b) & (a ^ result);
+    env->OF = (env->OF >> 31) & 1;
     return result;
 }
 
 
 uint32_t HELPER(rol_cc)(uint32_t x)
 {
-    env->CF = (x >> 31) & 1;
+    //env->CF = (x >> 31) & 1;
     return ((uint32_t)x << 1) | ((x >> 31) & 1);
 }
 
 uint32_t HELPER(ror_cc)(uint32_t x)
 {
-    env->CF = x & 1;
+    //env->CF = x & 1;
     return ((uint32_t)x >> 1) | (x << 31);
  }
 
@@ -73,7 +85,31 @@ uint32_t HELPER(rcr_cc)(uint32_t x)
     uint32_t temp = env->CF;
     env->CF = x & 1;
     return ((uint32_t)x >> 1) |(temp << 31);
-}  // dxw end
+}
+
+void HELPER(logic_cc)(uint32_t x)
+{
+	if((x >> 31) & 1)
+		env->SF = 1;
+	else
+		env->SF = 0;
+	if (x == 0)
+		env->ZF = 1;
+	else
+		env->ZF = 0;
+
+}
+
+void HELPER(logic_ZF) (uint32_t x)
+{
+	if (x == 0)
+		env->ZF = 1;
+	else
+		env->ZF = 0;
+
+}
+
+// dxw end
 
 void HELPER(exception)(uint32_t excp)
 {
