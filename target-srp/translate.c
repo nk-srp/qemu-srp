@@ -84,6 +84,21 @@ cpu_R	[i] = tcg_global_mem_new_i32(TCG_AREG0,
 			regnames[i]);
 }
 
+	cpu_R[60]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, irq),
+			    regnames[60]);
+
+	 cpu_R[61]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, psw),
+			    regnames[61]);
+
+	 cpu_R[62]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, sp),
+			    regnames[62]);
+
+	 cpu_R[63]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, pc),
+			    regnames[63]);
 }
 
 static int num_temps;
