@@ -3360,6 +3360,7 @@ int main(int argc, char **argv, char **envp)
             env->regs[i] = regs->uregs[i];
         }
 		env->pc = regs->pc;
+		env->sp = info->start_stack;
 	}
 
 #else

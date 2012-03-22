@@ -71,35 +71,51 @@ static const char *regnames[] = { "R00", "R04", "R08", "R0c", "R10", "R14",
 		"Re0", "Re4", "Re8", "Rec", "IRQ", "PSW", "SP", "PC" };
 		
 #include "gen-icount.h"
-		
-		/* initialize TCG globals.  */
-		void srp_translate_init(void) {
-			int i;
-				
-				cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
-				
-				for (i = 0; i < SRP_REGS; i++) {
-					cpu_R[i] = tcg_global_mem_new_i32(TCG_AREG0,
-							offsetof(CPUState, regs[i]),
-							regnames[i]);
-				}
-				cpu_R[60]= tcg_global_mem_new_i32(TCG_AREG0,
-					offsetof(CPUState, irq),
-					regnames[60]);
-				
-				cpu_R[61]= tcg_global_mem_new_i32(TCG_AREG0,
-						offsetof(CPUState, psw),
-						regnames[61]);
-				
-				cpu_R[62]= tcg_global_mem_new_i32(TCG_AREG0,
-						offsetof(CPUState, sp),
-						regnames[62]);
-				
-				cpu_R[63]= tcg_global_mem_new_i32(TCG_AREG0,
-						offsetof(CPUState, pc),
-						regnames[63]);
-				
-		}
+
+/* initialize TCG globals.  */
+void srp_translate_init(void) {
+	int i;
+
+	cpu_env = tcg_global_reg_new_ptr(TCG_AREG0, "env");
+
+	for (i = 0; i < SRP_REGS; i++) {
+ cpu_R[i] = tcg_global_mem_new_i32(TCG_AREG0,
+			offsetof(CPUState, regs[i]),
+			regnames[i]);
+}
+ cpu_R[60]= tcg_global_mem_new_i32(TCG_AREG0,
+		    offsetof(CPUState, irq),
+		    regnames[60]);
+
+ cpu_R[61]= tcg_global_mem_new_i32(TCG_AREG0,
+		    offsetof(CPUState, psw),
+		    regnames[61]);
+
+ cpu_R[62]= tcg_global_mem_new_i32(TCG_AREG0,
+		    offsetof(CPUState, sp),
+		    regnames[62]);
+
+ cpu_R[63]= tcg_global_mem_new_i32(TCG_AREG0,
+		    offsetof(CPUState, pc),
+		    regnames[63]);
+
+	cpu_R[60]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, irq),
+			    regnames[60]);
+
+	 cpu_R[61]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, psw),
+			    regnames[61]);
+
+	 cpu_R[62]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, sp),
+			    regnames[62]);
+
+	 cpu_R[63]= tcg_global_mem_new_i32(TCG_AREG0,
+			    offsetof(CPUState, pc),
+			    regnames[63]);
+}
+>>>>>>> upstream/master
 
 static int num_temps;
 
