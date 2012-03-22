@@ -1035,64 +1035,49 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
 			tmp1 = load_reg_8(s, rd);
-			tmp2=new_tmp();
 			tcg_gen_shli_i32(tmp1, tmp1, 24);
-			tcg_gen_movi_i32(tmp2, imm32 << 24);
-			tcg_gen_or_i32(tmp1, tmp1, tmp2);
+			tcg_gen_ori_i32(tmp1, tmp1, imm32 << 24);
 			gen_helper_logic_cc(tmp1);
 			tcg_gen_shri_i32(tmp1, tmp1, 24);
 			store_reg_8(s, rd, tmp1);
-			dead_tmp(tmp2);
 			break;
 		case 0x33:
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
 			tmp1 = load_reg_8(s, rd);
-			tmp2=new_tmp();
 			tcg_gen_shli_i32(tmp1, tmp1, 24);
-			tcg_gen_movi_i32(tmp2, imm32 << 24);
-			tcg_gen_xor_i32(tmp1, tmp1, tmp2);
+			tcg_gen_xori_i32(tmp1, tmp1, imm32 << 24);
 			gen_helper_logic_cc(tmp1);
 			tcg_gen_shri_i32(tmp1, tmp1, 24);
 			store_reg_8(s, rd, tmp1);
-			dead_tmp(tmp2);
 			break;
 		case 0x34:
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
 			tmp1 = load_reg_8(s, rd);
-			tmp2=new_tmp();
 			tcg_gen_shli_i32(tmp1, tmp1, 24);
-			tcg_gen_movi_i32(tmp2, imm32 << 24);
-			tcg_gen_and_i32(tmp1, tmp1, tmp2);
+			tcg_gen_andi_i32(tmp1, tmp1, imm32 << 24);
 			gen_helper_logic_cc(tmp1);
 			tcg_gen_shri_i32(tmp1, tmp1, 24);
 			store_reg_8(s, rd, tmp1);
-			dead_tmp(tmp2);
 			break;
 		case 0x35:
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
 			tmp1 = load_reg_8(s, rd);
-			tmp2=new_tmp();
 			tcg_gen_shli_i32(tmp1, tmp1, 24);
-			tcg_gen_movi_i32(tmp2, imm32 << 24);
-			tcg_gen_or_i32(tmp1, tmp1, tmp2);
+			tcg_gen_ori_i32(tmp1, tmp1, imm32 << 24);
 			gen_helper_logic_cc(tmp1);
 			dead_tmp(tmp1);
-			dead_tmp(tmp2);
 			break;
 		case 0x36:
 			rd = (insn >> 16) & 0xff;
 			imm32 = (insn >> 8) & 0xff;
 			tmp1 = load_reg_8(s, rd);
-			tmp2=new_tmp();
 		    tcg_gen_shli_i32(tmp1, tmp1, 24);
-			tcg_gen_movi_i32(tmp2, imm32 << 24);
-			tcg_gen_sub_i32(tmp1, tmp1, tmp2);
+			tcg_gen_subi_i32(tmp1, tmp1, imm32 << 24);
 			gen_helper_logic_cc(tmp1);
 			dead_tmp(tmp1);
-			dead_tmp(tmp2);
 			break;
 
 		case 0x17:
