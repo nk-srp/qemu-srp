@@ -31,7 +31,7 @@
 #include "qemu.h"
 #include "qemu-common.h"
 
-//#define DEBUG_MMAP
+#define DEBUG_MMAP
 
 #if defined(CONFIG_USE_NPTL)
 static pthread_mutex_t mmap_mutex = PTHREAD_MUTEX_INITIALIZER;
