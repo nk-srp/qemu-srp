@@ -99,21 +99,7 @@ void srp_translate_init(void) {
 		    offsetof(CPUState, pc),
 		    regnames[63]);
 
-	cpu_R[60]= tcg_global_mem_new_i32(TCG_AREG0,
-			    offsetof(CPUState, irq),
-			    regnames[60]);
 
-	 cpu_R[61]= tcg_global_mem_new_i32(TCG_AREG0,
-			    offsetof(CPUState, psw),
-			    regnames[61]);
-
-	 cpu_R[62]= tcg_global_mem_new_i32(TCG_AREG0,
-			    offsetof(CPUState, sp),
-			    regnames[62]);
-
-	 cpu_R[63]= tcg_global_mem_new_i32(TCG_AREG0,
-			    offsetof(CPUState, pc),
-			    regnames[63]);
 }
 
 static int num_temps;
@@ -155,6 +141,7 @@ static void store_reg(DisasContext *s, int reg, TCGv var) {
 	tcg_gen_mov_i32(cpu_R[reg >> 2], var);
 	dead_tmp(var);
 }
+
 
 /*
  static inline void
@@ -355,26 +342,36 @@ static inline void gen_jmp(DisasContext *s, uint32_t dest) {
 static inline void gen_push(DisasContext *s, int reg) {
 	TCGv tmp, addr;
 	tmp = load_reg(s, reg);
-	addr = load_reg(s, 62);
+	addr = load_reg(s, 62 << 2);
 	gen_st32(tmp, addr, IS_USER(s));
 	tcg_gen_subi_i32(addr, addr, 4);
-	store_reg(s, 62, addr);
+	store_reg(s, 62 << 2, addr);
 
 }
 
 static inline void gen_pop(DisasContext *s, int reg) {
 	TCGv tmp, addr;
-	addr = load_reg(s, 62);
+	addr = load_reg(s, 62 << 2);
 	tcg_gen_addi_i32(addr, addr, 4);
 	tmp = gen_ld32(addr, IS_USER(s));
-	store_reg(s, 62, addr);
+	store_reg(s, 62 << 2, addr);
 	store_reg(s, reg, tmp);
 
 }
 //end
 
 //Starts---DXW
-static inline void gen_push_flags(DisasContext *s, CPUState *env)
+static inline void gen_push_pc(DisasContext *s, int pc) {
+	TCGv tmp, addr;
+	tmp = new_tmp();
+	tcg_gen_movi_i32(tmp, pc);
+	addr = load_reg(s, 62 << 2);
+	gen_st32(tmp, addr, IS_USER(s));
+	tcg_gen_subi_i32(addr, addr, 4);
+	store_reg(s, 62 << 2, addr);
+
+}
+/*static inline void gen_push_flags(DisasContext *s, CPUState *env)
 {
 	TCGv tmp, addr;
 	uint32_t psr;
@@ -412,7 +409,7 @@ static inline void gen_pop_flags(DisasContext *s, CPUState *env)
 	dead_tmp(tmp1);
 }
 //Ends---DXW
-
+*/
 static inline TCGv load_reg_8(DisasContext *s, int reg) {
 	TCGv tmp;
 	tmp = load_reg(s, reg);
@@ -510,6 +507,8 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			s->is_jmp = DISAS_SWI;
 			break;
 		case 0x02:
+			s->is_jmp = DISAS_UPDATE;
+			gen_pop(s, 63 << 2);
 			break;
 		case 0x03:
 		case 0x04:
@@ -615,8 +614,8 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 			addr = load_reg(s, rd);
 			tmp = gen_ld32(addr, IS_USER(s));
 			dead_tmp(addr);
-			gen_push(s, 63);
-			gen_push_flags(s, env);
+			gen_push_pc(s, s->pc + iLength);
+//			gen_push_flags(s, env);
 			s->is_jmp = DISAS_UPDATE;
 			tcg_gen_mov_i32(cpu_R[63], tmp);
 			dead_tmp(tmp);
@@ -1389,19 +1388,18 @@ static void disas_srp_insn(CPUState * env, DisasContext *s) {
 		    gen_jmp(s,val);
 		    break;
 
-		 case  0xD6:
-			offset = ldl_code(s->pc + 1);
-		    val = (int32_t)s->pc;
-		    val += offset + 5;
-		    gen_jmp(s,val);
-		    break;
+		 case 0xD6:
+			val = ldl_code(s->pc + 1);
+			gen_jmp(s,val);
+			break;
 		 //Modification Ends---DXW
-		 /*
+
 		 case 0xD7:
-		 gen_push(s,63);
-		 val = gen_ld32( (int32_t)s->pc +1, IS_USER(s) );
+		 gen_push_pc(s, s->pc + iLength);
+		 val = ldl_code(s->pc + 1);
 		 gen_bx_im(s,val);
-		 break;*/
+		 break;
+
 		default:
 			goto illegal_op;
 
