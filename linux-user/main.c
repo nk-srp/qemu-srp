@@ -3360,7 +3360,7 @@ int main(int argc, char **argv, char **envp)
             env->regs[i] = regs->uregs[i];
         }
 		env->pc = regs->pc;
-		env->sp = info->start_stack;
+		env->sp = regs->sp;
 	}
 
 #else
@@ -3378,6 +3378,7 @@ int main(int argc, char **argv, char **envp)
         gdbserver_start (gdbstub_port);
         gdb_handlesig(env, 0);
     }
+
     cpu_loop(env);
     /* never exits */
     return 0;
